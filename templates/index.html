@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Explorer & X Share Hub</title>
+    <meta name="description" content="Explore Google Cloud BigQuery release notes, filter updates by type, and easily draft and share them on X (Twitter) using a real-time character preview.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-area">
+                    <div class="bq-logo-icon">
+                        <i class="fa-solid fa-database"></i>
+                        <i class="fa-solid fa-sparkles spark-overlay"></i>
+                    </div>
+                    <div>
+                        <h1 id="app-title">BigQuery Release Explorer</h1>
+                        <p class="subtitle">Stay updated with Google Cloud BigQuery releases and share highlights on X/Twitter</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <span id="last-updated-time" class="status-time">Last updated: Never</span>
+                    <button id="refresh-btn" class="btn btn-primary" title="Refresh Release Notes">
+                        <i id="refresh-icon" class="fa-solid fa-arrows-rotate"></i>
+                        <span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Utility/Filters Bar -->
+        <section class="filters-bar" aria-label="Filters and Search">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="search-input" placeholder="Search release notes (e.g. Gemini, columns, quota)..." aria-label="Search release notes">
+                <button id="clear-search-btn" class="clear-search-btn" style="display: none;" title="Clear search">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="filter-groups" role="group" aria-label="Filter updates by type">
+                <button class="filter-tab active" data-filter="all" id="filter-all">All Updates</button>
+                <button class="filter-tab" data-filter="feature" id="filter-feature">
+                    <span class="indicator pill-feature"></span>Features
+                </button>
+                <button class="filter-tab" data-filter="issue" id="filter-issue">
+                    <span class="indicator pill-issue"></span>Issues & Fixes
+                </button>
+                <button class="filter-tab" data-filter="changed" id="filter-changed">
+                    <span class="indicator pill-changed"></span>Changes
+                </button>
+                <button class="filter-tab" data-filter="deprecated" id="filter-deprecated">
+                    <span class="indicator pill-deprecated"></span>Deprecated
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Left Panel: Feed -->
+            <section class="feed-section" aria-label="Release Notes Feed">
+                <div id="loading-state" class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Fetching latest BigQuery release notes...</p>
+                </div>
+                
+                <div id="error-state" class="error-state" style="display: none;">
+                    <i class="fa-solid fa-triangle-exclamation error-icon"></i>
+                    <h2>Failed to Load Releases</h2>
+                    <p id="error-message">Unable to fetch release notes feed. Please check your network connection.</p>
+                    <button id="retry-btn" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrows-rotate"></i> Try Again
+                    </button>
+                </div>
+
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <i class="fa-regular fa-folder-open empty-icon"></i>
+                    <h2>No Matching Updates</h2>
+                    <p>We couldn't find any updates matching your search or filters.</p>
+                    <button id="reset-filters-btn" class="btn btn-secondary">Clear Filters</button>
+                </div>
+
+                <div id="releases-container" class="releases-container">
+                    <!-- Dynamic release entry dates will go here -->
+                </div>
+            </section>
+
+            <!-- Right Panel: Composer Sidebar -->
+            <aside class="composer-section" aria-label="X Post Draft Composer">
+                <div class="composer-card sticky-card">
+                    <!-- Empty State for Composer -->
+                    <div id="composer-empty-state" class="composer-empty-state">
+                        <div class="composer-placeholder-icon">
+                            <i class="fa-brands fa-x-twitter"></i>
+                        </div>
+                        <h3>Share BigQuery Updates</h3>
+                        <p>Select any specific update card on the left to customize and share it on X/Twitter instantly.</p>
+                    </div>
+
+                    <!-- Active Composer Form -->
+                    <div id="composer-active-state" class="composer-active-state" style="display: none;">
+                        <div class="composer-header">
+                            <h3><i class="fa-brands fa-x-twitter"></i> Draft Post</h3>
+                            <button id="deselect-btn" class="btn-text" title="Deselect update">Deselect</button>
+                        </div>
+                        
+                        <div class="selected-details">
+                            <span id="composer-selected-date" class="meta-date">June 15, 2026</span>
+                            <span id="composer-selected-badge" class="type-badge badge-feature">Feature</span>
+                        </div>
+
+                        <!-- Mock X/Twitter Post Container -->
+                        <div class="x-post-preview">
+                            <div class="x-avatar">
+                                <div class="x-avatar-inner">
+                                    <i class="fa-solid fa-database"></i>
+                                </div>
+                            </div>
+                            <div class="x-body">
+                                <div class="x-user-info">
+                                    <span class="x-name">BigQuery Releases</span>
+                                    <span class="x-handle">@GoogleCloud</span>
+                                    <span class="x-dot">·</span>
+                                    <span class="x-time" id="x-preview-time">1m</span>
+                                </div>
+                                <div class="x-text-container">
+                                    <textarea id="tweet-textarea" aria-label="Edit post text" placeholder="What's happening?"></textarea>
+                                </div>
+                                <div class="x-footer-actions">
+                                    <span><i class="fa-regular fa-comment"></i> 0</span>
+                                    <span><i class="fa-regular fa-repost"></i> 0</span>
+                                    <span><i class="fa-regular fa-heart"></i> 0</span>
+                                    <span><i class="fa-regular fa-bookmark"></i></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Character Counter and Action Buttons -->
+                        <div class="composer-actions">
+                            <div class="char-count-wrapper">
+                                <div class="char-progress-bar">
+                                    <div id="char-progress-fill" class="char-progress-fill"></div>
+                                </div>
+                                <span id="char-count-display">0 / 280</span>
+                            </div>
+                            <div class="button-row">
+                                <button id="copy-btn" class="btn btn-secondary" title="Copy to clipboard">
+                                    <i class="fa-regular fa-copy"></i>
+                                    <span>Copy Text</span>
+                                </button>
+                                <button id="tweet-btn" class="btn btn-twitter" title="Share on X/Twitter">
+                                    <i class="fa-brands fa-x-twitter"></i>
+                                    <span>Post to X</span>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="tweet-warning-msg" class="warning-text" style="display: none;">
+                            <i class="fa-solid fa-circle-exclamation"></i> Content exceeds X/Twitter's 280-character limit!
+                        </p>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <p>&copy; 2026 BigQuery Release Notes Hub. Powered by Python Flask and Google Cloud Feeds.</p>
+                <div class="footer-links">
+                    <a href="https://docs.cloud.google.com/feeds/bigquery-release-notes.xml" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-solid fa-rss"></i> XML Feed
+                    </a>
+                    <span class="divider">|</span>
+                    <a href="https://cloud.google.com/bigquery/docs/release-notes" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Official Release Notes
+                    </a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Custom App JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
